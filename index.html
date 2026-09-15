@@ -49,6 +49,65 @@ function show(id){["home","form","ticket"].forEach(x=>document.getElementById(x)
 function showForm(){show("form")}
 function err(t){let e=document.getElementById("error");e.textContent=t;e.classList.remove("hidden")}
 async function joinQueue(){
+  clearError();
+  joinButton.disabled = true;
+  joinButton.textContent = 'ENTRANDO...';
+
+  try {
+    const row = {
+      name: document.getElementById('nameInput').value.trim(),
+      phone: document.getElementById('phoneInput').value.trim(),
+      plate: document.getElementById('plateInput').value.trim().toUpperCase(),
+      vehicle_type: document.getElementById('vehicleSelect').value,
+      operation: document.getElementById('operationSelect').value,
+      product: document.getElementById('productSelect').value
+    };
+
+    if (!row.name || !row.phone || !row.plate) {
+      showError('Preencha nome, celular e placa.');
+      return;
+    }
+
+    const result = await client.rpc('join_agrofila_queue', {
+      p_name: row.name,
+      p_phone: row.phone,
+      p_plate: row.plate,
+      p_vehicle_type: row.vehicle_type,
+      p_operation: row.operation,
+      p_product: row.product
+    });
+
+    if (result.error) {
+      console.error('Erro AgroFila:', result.error);
+      showError('Erro ao entrar na fila:\n' + result.error.message);
+      return;
+    }
+
+    const newTicket = result.data && result.data[0];
+
+    if (!newTicket) {
+      showError('O banco não gerou a senha da fila.');
+      return;
+    }
+
+    ticketId = newTicket.id;
+    accessToken = newTicket.access_token;
+
+    localStorage.setItem('agrofila_ticket_id', ticketId);
+    localStorage.setItem('agrofila_access_token', accessToken);
+
+    show('ticket');
+    await refresh();
+
+  } catch (e) {
+    console.error(e);
+    showError('Erro de conexão:\n' + (e.message || e));
+
+  } finally {
+    joinButton.disabled = false;
+    joinButton.textContent = 'ENTRAR NA FILA';
+  }
+}
  document.getElementById("error").classList.add("hidden");
  const row={name:name.value.trim(),phone:phone.value.trim(),plate:plate.value.trim().toUpperCase(),vehicle_type:vehicle.value,operation:operation.value,product:product.value};
  if(!row.name||!row.phone||!row.plate)return err("Preencha nome, celular e placa.");
