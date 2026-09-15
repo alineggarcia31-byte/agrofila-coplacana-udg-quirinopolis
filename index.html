@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AgroFila — COPLACANA UDG QUIRINOPOLIS</title>
+<style>
+*{box-sizing:border-box} body{margin:0;font-family:Arial,sans-serif;background:#f4f7f2;color:#183b24}
+header{background:#176b3a;color:#fff;padding:22px 18px;text-align:center;font-weight:800;font-size:22px}
+main{max-width:520px;margin:28px auto;padding:20px}
+.card{background:#fff;border-radius:18px;padding:24px;box-shadow:0 8px 28px #0001}
+button{width:100%;border:0;border-radius:12px;padding:16px;background:#176b3a;color:#fff;font-size:18px;font-weight:800;cursor:pointer}
+h1{font-size:25px;margin:0 0 8px} p{color:#58705e}
+label{display:block;font-weight:700;margin-top:14px;margin-bottom:6px}
+input,select{width:100%;padding:13px;border:1px solid #ccd8ce;border-radius:10px;font-size:16px}
+.hidden{display:none}.ticket{margin-top:18px;padding:18px;border-radius:14px;background:#edf7ef}
+.pos{font-size:40px;font-weight:900;text-align:center;color:#176b3a}
+.small{text-align:center;font-size:13px;color:#667}
+</style>
+</head>
+<body>
+<header>🌾 AGROFILA — COPLACANA UDG QUIRINOPOLIS</header>
+<main>
+<section class="card" id="home">
+<h1>Marque sua vez na fila</h1>
+<p>Informe seus dados para entrar na fila de carregamento ou descarregamento.</p>
+<button onclick="showForm()">ENTRAR NA FILA</button>
+</section>
+<section class="card hidden" id="form">
+<h1>Entrada na fila</h1>
+<label>Nome</label><input id="nome" autocomplete="name">
+<label>Celular</label><input id="celular" inputmode="tel">
+<label>Placa</label><input id="placa" style="text-transform:uppercase">
+<label>Tipo de veículo</label>
+<select id="veiculo"><option>Carreta</option><option>Truck</option><option>Bitrem</option><option>Rodotrem</option><option>Outro</option></select>
+<label>Operação</label>
+<select id="operacao"><option>Carga</option><option>Descarga</option></select>
+<label>Produto</label>
+<select id="produto"><option>Soja</option><option>Milho</option><option>Outro</option></select>
+<br><br><button onclick="entrar()">CONFIRMAR ENTRADA NA FILA</button>
+</section>
+<section class="card hidden" id="ticket">
+<h1>Entrada confirmada</h1>
+<p id="dados"></p>
+<div class="ticket"><div class="small">SUA POSIÇÃO NA FILA</div><div class="pos" id="pos"></div></div>
+<br><button onclick="location.reload()">VOLTAR</button>
+</section>
+</main>
+<script>
+function showForm(){document.getElementById('home').classList.add('hidden');document.getElementById('form').classList.remove('hidden')}
+function entrar(){
+ const nome=document.getElementById('nome').value.trim(), celular=document.getElementById('celular').value.trim(), placa=document.getElementById('placa').value.trim().toUpperCase();
+ if(!nome||!celular||!placa){alert('Preencha Nome, Celular e Placa.');return}
+ const key='agrofila_coplacana_fila';
+ const fila=JSON.parse(localStorage.getItem(key)||'[]');
+ const item={nome,celular,placa,veiculo:veiculo.value,operacao:operacao.value,produto:produto.value,at:new Date().toISOString()};
+ fila.push(item); localStorage.setItem(key,JSON.stringify(fila));
+ document.getElementById('form').classList.add('hidden');document.getElementById('ticket').classList.remove('hidden');
+ document.getElementById('pos').textContent=fila.length;
+ document.getElementById('dados').textContent=`${nome} • ${placa} • ${operacao.value} • ${produto.value}`;
+}
+</script>
+</body></html>
