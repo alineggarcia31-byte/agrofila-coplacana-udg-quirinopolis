@@ -5,5 +5,5 @@
 
 window.AGROFILA_CONFIG = {
   SUPABASE_URL: "https://suyebqrcaqfslfowtili.supabase.co",
-  SUPABASE_KEY: sb_publishable_QxwXJ--E-y9ssK09XRYtlA_aOZPsmqh
+  SUPABASE_KEY: "sb_publishable_QxwXJ--E-y9ssK09XRYtlA_aOZPsmqh"
 };
