@@ -26,7 +26,9 @@ input,select{padding:12px;border:1px solid #ccd8ce;border-radius:9px;font-size:1
 <script>
 const cfg=window.AGROFILA_CONFIG||{};const sb=window.supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_KEY);const UNIT="COPLACANA-UDG-QUIRINOPOLIS";let filter="TODOS",rows=[];
 function login(){sb.auth.signInWithPassword({email:email.value,password:password.value}).then(({error})=>{if(error){loginErr.textContent=error.message;loginErr.classList.remove("hidden")}else start()})}
-async function start(){login.classList.add("hidden");app.classList.remove("hidden");await load();subscribe()}
+async function start(){
+  document.getElementById("login").classList.add("hidden");
+  document.getElementById("app").classList.remove("hidden");;await load();subscribe()}
 async function load(){let r=await sb.from("queue_entries").select("*").eq("unit_code",UNIT).in("status",["AGUARDANDO","CHAMADO","EM_ATENDIMENTO"]).order("created_at",{ascending:true});if(r.error){alert(r.error.message);return}rows=r.data||[];render()}
 function subscribe(){sb.channel("agrofila-balanca").on("postgres_changes",{event:"*",schema:"public",table:"queue_entries",filter:"unit_code=eq."+UNIT},load).subscribe()}
 function render(){let q=(search.value||"").toLowerCase(),p=product.value;let r=rows.filter(x=>filter==="TODOS"||x.operation===filter).filter(x=>(x.plate+" "+x.name).toLowerCase().includes(q)).filter(x=>!p||x.product===p);cargaList.innerHTML=cards(r.filter(x=>x.operation==="CARGA"));descargaList.innerHTML=cards(r.filter(x=>x.operation==="DESCARGA"));total.textContent=rows.filter(x=>x.status==="AGUARDANDO").length;carga.textContent=rows.filter(x=>x.status==="AGUARDANDO"&&x.operation==="CARGA").length;descarga.textContent=rows.filter(x=>x.status==="AGUARDANDO"&&x.operation==="DESCARGA").length;atendimento.textContent=rows.filter(x=>["CHAMADO","EM_ATENDIMENTO"].includes(x.status)).length}
