@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AgroFila — Tela da Balança</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js"></script>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f6f1;color:#173b28}
+header{background:#176b3a;color:#fff;padding:18px 28px;display:flex;justify-content:space-between;align-items:center}.brand{font-size:24px;font-weight:900}.unit{font-size:13px;margin-top:4px}.clock{background:#0f572e;padding:10px 14px;border-radius:10px;font-weight:800}
+main{max-width:1500px;margin:auto;padding:22px}.login,.toolbar,.panel,.stat{background:#fff;border-radius:14px;padding:16px;box-shadow:0 3px 14px #0001}.login{max-width:420px;margin:60px auto}
+input,select{padding:12px;border:1px solid #ccd8ce;border-radius:9px;font-size:15px}button{border:0;border-radius:9px;padding:11px 15px;font-weight:800;cursor:pointer}.primary{background:#176b3a;color:#fff}.lime{background:#d8f22b;color:#173b28}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}.stat small{color:#607067}.stat strong{display:block;font-size:30px;margin-top:6px}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:18px}.toolbar input{min-width:280px}.tabs button.active{background:#176b3a;color:#fff}.tabs button:not(.active){background:#e8efe9;color:#176b3a}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.panel h2{margin-top:0}.queue{display:flex;flex-direction:column;gap:10px}.card{border:1px solid #dce5df;border-radius:12px;padding:14px;display:grid;grid-template-columns:55px 1fr auto;gap:12px;align-items:center}.pos{font-size:28px;font-weight:900;color:#176b3a;text-align:center}.plate{font-size:19px;font-weight:900}.meta{font-size:13px;color:#5d6e64;margin-top:4px}.badge{display:inline-block;margin-top:6px;padding:4px 7px;border-radius:999px;background:#edf5ef;color:#176b3a;font-size:11px;font-weight:800}.actions{display:flex;flex-direction:column;gap:6px}.call{background:#176b3a;color:#fff}.arrive{background:#e9f4ed;color:#176b3a}.finish{background:#e9edf8;color:#284c9a}.danger{background:#f8e8e8;color:#9a2d2d}.hidden{display:none}.empty{text-align:center;padding:30px;color:#7a897f}.err{color:#922;background:#fee;padding:10px;border-radius:8px;margin-top:10px}
+@media(max-width:900px){.stats{grid-template-columns:2fr 2fr}.grid{grid-template-columns:1fr}}
+</style></head>
+<body>
+<header><div><div class="brand">🌾 AGROFILA — TELA DA BALANÇA</div><div class="unit">COPLACANA UDG QUIRINÓPOLIS</div></div><div class="clock" id="clock"></div></header>
+<main>
+<section id="login" class="login"><h2>Acesso da Balança</h2><p>Entre com o usuário da equipe da balança.</p><input id="email" type="email" placeholder="E-mail"><br><br><input id="password" type="password" placeholder="Senha"><button class="primary" style="width:100%;margin-top:12px" onclick="login()">ENTRAR</button><div id="loginErr" class="err hidden"></div></section>
+<section id="app" class="hidden">
+<div class="stats"><div class="stat"><small>AGUARDANDO</small><strong id="total">0</strong></div><div class="stat"><small>CARGA</small><strong id="carga">0</strong></div><div class="stat"><small>DESCARGA</small><strong id="descarga">0</strong></div><div class="stat"><small>EM ATENDIMENTO</small><strong id="atendimento">0</strong></div></div>
+<div class="toolbar"><div class="tabs"><button class="active" data-filter="TODOS">Todos</button><button data-filter="CARGA">Carga</button><button data-filter="DESCARGA">Descarga</button></div><input id="search" placeholder="🔎 Placa ou motorista"><select id="product"><option value="">Todos os produtos</option><option>Soja</option><option>Milho</option><option>Outro</option></select><button class="lime" onclick="callNext()">CHAMAR PRÓXIMO</button><button onclick="logout()">SAIR</button></div>
+<div class="grid"><div class="panel"><h2>🚛 FILA DE CARGA</h2><div id="cargaList" class="queue"></div></div><div class="panel"><h2>📦 FILA DE DESCARGA</h2><div id="descargaList" class="queue"></div></div></div>
+</section></main>
+<script>
+const cfg=window.AGROFILA_CONFIG||{};const sb=window.supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_KEY);const UNIT="COPLACANA-UDG-QUIRINOPOLIS";let filter="TODOS",rows=[];
+function login(){sb.auth.signInWithPassword({email:email.value,password:password.value}).then(({error})=>{if(error){loginErr.textContent=error.message;loginErr.classList.remove("hidden")}else start()})}
+async function start(){login.classList.add("hidden");app.classList.remove("hidden");await load();subscribe()}
+async function load(){let r=await sb.from("queue_entries").select("*").eq("unit_code",UNIT).in("status",["AGUARDANDO","CHAMADO","EM_ATENDIMENTO"]).order("created_at",{ascending:true});if(r.error){alert(r.error.message);return}rows=r.data||[];render()}
+function subscribe(){sb.channel("agrofila-balanca").on("postgres_changes",{event:"*",schema:"public",table:"queue_entries",filter:"unit_code=eq."+UNIT},load).subscribe()}
+function render(){let q=(search.value||"").toLowerCase(),p=product.value;let r=rows.filter(x=>filter==="TODOS"||x.operation===filter).filter(x=>(x.plate+" "+x.name).toLowerCase().includes(q)).filter(x=>!p||x.product===p);cargaList.innerHTML=cards(r.filter(x=>x.operation==="CARGA"));descargaList.innerHTML=cards(r.filter(x=>x.operation==="DESCARGA"));total.textContent=rows.filter(x=>x.status==="AGUARDANDO").length;carga.textContent=rows.filter(x=>x.status==="AGUARDANDO"&&x.operation==="CARGA").length;descarga.textContent=rows.filter(x=>x.status==="AGUARDANDO"&&x.operation==="DESCARGA").length;atendimento.textContent=rows.filter(x=>["CHAMADO","EM_ATENDIMENTO"].includes(x.status)).length}
+function cards(a){if(!a.length)return '<div class="empty">Nenhum veículo na fila.</div>';return a.map((x,i)=>`<div class="card"><div class="pos">${i+1}</div><div><div class="plate">${x.plate}</div><div>${x.name}</div><div class="meta">${x.vehicle_type} • ${x.product} • ${new Date(x.created_at).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</div><span class="badge">${x.status.replaceAll("_"," ")}</span></div><div class="actions">${x.status==="AGUARDANDO"?`<button class="call" onclick="act('${x.id}','CHAMADO')">CHAMAR</button>`:""}${x.status==="CHAMADO"?`<button class="arrive" onclick="act('${x.id}','EM_ATENDIMENTO')">VEÍCULO CHEGOU</button>`:""}${x.status==="EM_ATENDIMENTO"?`<button class="finish" onclick="act('${x.id}','FINALIZADO')">FINALIZAR</button>`:""}<button class="danger" onclick="act('${x.id}','CANCELADO')">NÃO COMPARECEU</button></div></div>`).join("")}
+async function act(id,status){let patch={status};if(status==="CHAMADO")patch.called_at=new Date().toISOString();if(status==="EM_ATENDIMENTO")patch.started_at=new Date().toISOString();if(["FINALIZADO","CANCELADO"].includes(status))patch.finished_at=new Date().toISOString();let r=await sb.from("queue_entries").update(patch).eq("id",id);if(r.error)alert(r.error.message)}
+async function callNext(){let x=rows.find(y=>y.status==="AGUARDANDO");if(!x)return alert("Não há veículos aguardando.");await act(x.id,"CHAMADO")}
+function logout(){sb.auth.signOut().then(()=>location.reload())}
+document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{document.querySelectorAll(".tabs button").forEach(z=>z.classList.remove("active"));b.classList.add("active");filter=b.dataset.filter;render()});search.oninput=render;product.onchange=render;setInterval(()=>clock.textContent=new Date().toLocaleTimeString("pt-BR"),1000);
+sb.auth.getSession().then(({data})=>{if(data.session)start()})
+</script></body></html>

@@ -1,0 +1,29 @@
+AGROFILA — CONEXÃO EM TEMPO REAL
+
+Este pacote é a ponte entre o celular do motorista e a Tela da Balança.
+
+ARQUIVOS
+- index-realtime.html: motorista, grava a entrada no PostgreSQL/Supabase.
+- balanca-realtime.html: balança, lê a fila e recebe alterações em tempo real.
+- config.js: URL + Publishable/anon key do Supabase.
+- supabase.sql: tabela, índices, RLS, RPC e Realtime.
+
+PARA ATIVAR
+1. Crie um projeto no Supabase.
+2. Abra SQL Editor e execute TODO o arquivo supabase.sql.
+3. Em Authentication > Users, crie o usuário/e-mail da balança e uma senha.
+4. Copie a Project URL e a Publishable/anon key do Supabase para config.js.
+5. No Vercel, substitua o index.html atual pelo conteúdo de index-realtime.html (renomeie para index.html) e mantenha config.js junto.
+6. Publique balanca-realtime.html + config.js em um local acessível à balança.
+7. Abra a tela da balança, entre com o usuário criado e teste.
+
+IMPORTANTE
+- Não coloque a service_role key no navegador.
+- A tela da balança exige login do Supabase.
+- O motorista entra sem login; sua senha/token é privada e usada pela RPC.
+- O motorista consulta sua posição por polling de 5 segundos.
+- A balança recebe INSERT/UPDATE por Supabase Realtime.
+
+O QUE ACONTECE NO TESTE
+Motorista escaneia QR -> preenche dados -> INSERT no banco -> a balança recebe o novo veículo automaticamente.
+Quando a balança clicar CHAMAR, o status muda no banco e o celular do motorista passa a mostrar "VEÍCULO CHAMADO".
