@@ -42,91 +42,24 @@ button{width:100%;padding:15px;border:0;border-radius:11px;background:#176b3a;co
 </section>
 </main>
 <script>
-const cfg=window.AGROFILA_CONFIG||{};
-const client=window.supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_KEY);
-const UNIT="COPLACANA-UDG-QUIRINOPOLIS";let ticketId=null;let accessToken=null;
-function show(id){["home","form","ticket"].forEach(x=>document.getElementById(x).classList.toggle("hidden",x!==id))}
-function showForm(){show("form")}
-function exitTicket(){
-  localStorage.removeItem('agrofila_ticket_id');
-  localStorage.removeItem('agrofila_access_token');
-  ticketId=null;
-  accessToken=null;
-  show('home');
+const saved =
+  localStorage.getItem("agrofila_ticket_id");
 
-function err(t){let e=document.getElementById("error");e.textContent=t;e.classList.remove("hidden")}
-async function joinQueue(){
-  const nameValue = document.getElementById('name').value.trim();
-  const phoneValue = document.getElementById('phone').value.trim();
-  const plateValue = document.getElementById('plate').value.trim().toUpperCase();
-  const vehicleValue = document.getElementById('vehicle').value;
-  const operationValue = document.getElementById('operation').value;
-  const productValue = document.getElementById('product').value;
+const savedToken =
+  localStorage.getItem("agrofila_access_token");
 
-  const errorBox = document.getElementById('error');
-  errorBox.classList.add('hidden');
+if (saved && savedToken) {
 
-  if(!nameValue || !phoneValue || !plateValue){
-    err('Preencha nome, celular e placa.');
-    return;
-  }
+  ticketId = saved;
+  accessToken = savedToken;
 
-  const button = document.querySelector('#form button');
-  button.disabled = true;
-  button.textContent = 'ENTRANDO...';
-
-  try {
-    const {data, error} = await client.rpc('join_agrofila_queue', {
-      p_name: nameValue,
-      p_phone: phoneValue,
-      p_plate: plateValue,
-      p_vehicle_type: vehicleValue,
-      p_operation: operationValue,
-      p_product: productValue
-    });
-
-    if(error){
-      console.error(error);
-      err('Erro ao entrar na fila: ' + error.message);
-      return;
-    }
-
-    const ticket = data && data[0];
-
-    if(!ticket){
-      err('O banco não gerou a senha da fila.');
-      return;
-    }
-
-    ticketId = ticket.id;
-    accessToken = ticket.access_token;
-
-    localStorage.setItem('agrofila_ticket_id', ticketId);
-    localStorage.setItem('agrofila_access_token', accessToken);
-
-    show('ticket');
-    await refresh();
-
-  } catch(e) {
-    console.error(e);
-    err('Erro de conexão: ' + (e.message || e));
-
-  } finally {
-    button.disabled = false;
-    button.textContent = 'ENTRAR NA FILA';
-  }
+  show("ticket");
+  refresh();
+  subscribe();
 }
-async function refresh(){
- if(!ticketId)return;
- const {data,error}=await client.rpc("get_agrofila_ticket",{p_access_token:accessToken});
- const t=data&&data[0];
- if(error||!t)return;
- summary.textContent=`${t.name} • ${t.plate} • ${t.operation==="CARGA"?"Carga":"Descarga"} • ${t.product}`;
- status.textContent=t.status==="AGUARDANDO"?"Aguardando chamada.":t.status==="CHAMADO"?"🚛 VEÍCULO CHAMADO — dirija-se à balança.":t.status==="EM_ATENDIMENTO"?"Em atendimento.":t.status==="FINALIZADO"?"Operação finalizada.":"Registro encerrado.";
-position.textContent=t.queue_number||1;
-}
-function subscribe(){
- client.channel("agrofila-ticket-"+ticketId).on("postgres_changes",{event:"*",schema:"public",table:"queue_entries",filter:"id=eq."+ticketId},refresh).subscribe();
-}
-const saved=localStorage.getItem("agrofila_ticket_id"),savedToken=localStorage.getItem("agrofila_access_token");if(saved&&savedToken){ticketId=saved;accessToken=savedToken;show("ticket");refresh()} setInterval(refresh,5000);
-</script></body></html>
+
+setInterval(refresh, 5000);
+</script>
+
+</body>
+</html>
