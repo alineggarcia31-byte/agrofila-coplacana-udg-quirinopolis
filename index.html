@@ -42,6 +42,179 @@ button{width:100%;padding:15px;border:0;border-radius:11px;background:#176b3a;co
 </section>
 </main>
 <script>
+<script>
+const cfg = window.AGROFILA_CONFIG || {};
+const client = window.supabase.createClient(
+  cfg.SUPABASE_URL,
+  cfg.SUPABASE_KEY
+);
+
+const UNIT = "COPLACANA-UDG-QUIRINOPOLIS";
+
+let ticketId = null;
+let accessToken = null;
+
+function show(id) {
+  ["home", "form", "ticket"].forEach(x => {
+    document.getElementById(x).classList.toggle("hidden", x !== id);
+  });
+}
+
+function showForm() {
+  show("form");
+}
+
+function exitTicket() {
+  localStorage.removeItem("agrofila_ticket_id");
+  localStorage.removeItem("agrofila_access_token");
+
+  ticketId = null;
+  accessToken = null;
+
+  document.getElementById("name").value = "";
+  document.getElementById("phone").value = "";
+  document.getElementById("plate").value = "";
+
+  show("home");
+}
+
+function err(t) {
+  const e = document.getElementById("error");
+  e.textContent = t;
+  e.classList.remove("hidden");
+}
+
+async function joinQueue() {
+
+  const nameValue = document.getElementById("name").value.trim();
+  const phoneValue = document.getElementById("phone").value.trim();
+  const plateValue = document.getElementById("plate").value.trim().toUpperCase();
+  const vehicleValue = document.getElementById("vehicle").value;
+  const operationValue = document.getElementById("operation").value;
+  const productValue = document.getElementById("product").value;
+
+  document.getElementById("error").classList.add("hidden");
+
+  if (!nameValue || !phoneValue || !plateValue) {
+    err("Preencha nome, celular e placa.");
+    return;
+  }
+
+  const button = document.querySelector("#form button");
+
+  button.disabled = true;
+  button.textContent = "ENTRANDO...";
+
+  try {
+
+    const { data, error } = await client.rpc(
+      "join_agrofila_queue",
+      {
+        p_name: nameValue,
+        p_phone: phoneValue,
+        p_plate: plateValue,
+        p_vehicle_type: vehicleValue,
+        p_operation: operationValue,
+        p_product: productValue
+      }
+    );
+
+    if (error) {
+      console.error(error);
+      err("Erro ao entrar na fila: " + error.message);
+      return;
+    }
+
+    const ticket = data && data[0];
+
+    if (!ticket) {
+      err("O banco não gerou a senha da fila.");
+      return;
+    }
+
+    ticketId = ticket.id;
+    accessToken = ticket.access_token;
+
+    localStorage.setItem("agrofila_ticket_id", ticketId);
+    localStorage.setItem("agrofila_access_token", accessToken);
+
+    show("ticket");
+
+    await refresh();
+    subscribe();
+
+  } catch (e) {
+
+    console.error(e);
+    err("Erro de conexão: " + (e.message || e));
+
+  } finally {
+
+    button.disabled = false;
+    button.textContent = "ENTRAR NA FILA";
+
+  }
+}
+
+async function refresh() {
+
+  if (!ticketId || !accessToken) return;
+
+  const { data, error } = await client.rpc(
+    "get_agrofila_ticket",
+    {
+      p_access_token: accessToken
+    }
+  );
+
+  if (error) {
+    console.error(error);
+    return;
+  }
+
+  const t = data && data[0];
+
+  if (!t) return;
+
+  document.getElementById("summary").textContent =
+    `${t.name} • ${t.plate} • ${
+      t.operation === "CARGA" ? "Carga" : "Descarga"
+    } • ${t.product}`;
+
+  document.getElementById("status").textContent =
+    t.status === "AGUARDANDO"
+      ? "Aguardando chamada."
+      : t.status === "CHAMADO"
+      ? "🚛 VEÍCULO CHAMADO — dirija-se à balança."
+      : t.status === "EM_ATENDIMENTO"
+      ? "Em atendimento."
+      : t.status === "FINALIZADO"
+      ? "Operação finalizada."
+      : "Registro encerrado.";
+
+  document.getElementById("position").textContent =
+    t.queue_number ?? "—";
+}
+
+function subscribe() {
+
+  if (!ticketId) return;
+
+  client
+    .channel("agrofila-ticket-" + ticketId)
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "queue_entries",
+        filter: "id=eq." + ticketId
+      },
+      refresh
+    )
+    .subscribe();
+}
+
 const saved =
   localStorage.getItem("agrofila_ticket_id");
 
@@ -59,7 +232,7 @@ if (saved && savedToken) {
 }
 
 setInterval(refresh, 5000);
-</script>
+</script
 
 </body>
 </html>
