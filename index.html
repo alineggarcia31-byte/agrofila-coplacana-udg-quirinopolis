@@ -38,7 +38,7 @@ button{width:100%;padding:15px;border:0;border-radius:11px;background:#176b3a;co
 <h1>Entrada confirmada</h1><p id="summary"></p>
 <div class="pos" id="position">—</div><div class="msg">SUA POSIÇÃO NA FILA</div>
 <p id="status" class="msg">Aguardando chamada.</p>
-<button onclick="location.reload()">SAIR</button>
+<button onclick="exitTicket()">SAIR</button>
 </section>
 </main>
 <script>
@@ -47,6 +47,13 @@ const client=window.supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_KEY);
 const UNIT="COPLACANA-UDG-QUIRINOPOLIS";let ticketId=null;let accessToken=null;
 function show(id){["home","form","ticket"].forEach(x=>document.getElementById(x).classList.toggle("hidden",x!==id))}
 function showForm(){show("form")}
+function exitTicket(){
+  localStorage.removeItem('agrofila_ticket_id');
+  localStorage.removeItem('agrofila_access_token');
+  ticketId=null;
+  accessToken=null;
+  show('home');
+
 function err(t){let e=document.getElementById("error");e.textContent=t;e.classList.remove("hidden")}
 async function joinQueue(){
   const nameValue = document.getElementById('name').value.trim();
