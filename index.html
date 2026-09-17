@@ -847,10 +847,17 @@ client.auth.onAuthStateChange(
 
   }
 );
+const isRecovery =
+  window.location.hash.includes("type=recovery");
+
+
+
 const saved =
-  localStorage.getItem(
-    "agrofila_ticket_id"
-  );
+  isRecovery
+    ? null
+    : localStorage.getItem(
+        "agrofila_ticket_id"
+      );
 
 
 const savedToken =
