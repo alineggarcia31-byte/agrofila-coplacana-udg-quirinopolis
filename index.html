@@ -205,7 +205,41 @@ ENTRAR NA FILA
 </section>
 
 
-<!-- TICKET -->
+<!-- RECUPERAÇÃO DE SENHA -->
+
+<section id="recovery" class="card hidden">
+
+<h1>Nova senha</h1>
+
+<p>
+Digite uma nova senha para acessar a Balança do AgroFila.
+</p>
+
+<label>Nova senha</label>
+
+<input
+  id="newPassword"
+  type="password"
+  placeholder="Digite a nova senha"
+>
+
+<label>Confirmar nova senha</label>
+
+<input
+  id="confirmPassword"
+  type="password"
+  placeholder="Digite novamente a senha"
+>
+
+<button onclick="updatePassword()">
+SALVAR NOVA SENHA
+</button>
+
+<div id="recoveryError" class="error hidden"></div>
+
+<p id="recoverySuccess" class="msg"></p>
+
+</section><!-- TICKET -->
 
 <section id="ticket" class="card hidden">
 
@@ -264,7 +298,7 @@ let realtimeChannel = null;
 
 function show(id) {
 
-  ["home","form","ticket"].forEach(function(x) {
+  ["home","form","ticket","recovery"].forEach(function(x) {
 
     const element = document.getElementById(x);
 
@@ -671,7 +705,77 @@ document.getElementById("entryDate").textContent =
 
 }
 
+/* =========================
+   RECUPERAÇÃO DE SENHA
+========================= */
 
+async function updatePassword() {
+
+  const newPassword =
+    document.getElementById("newPassword").value;
+
+  const confirmPassword =
+    document.getElementById("confirmPassword").value;
+
+  const errorBox =
+    document.getElementById("recoveryError");
+
+  const successBox =
+    document.getElementById("recoverySuccess");
+
+  errorBox.classList.add("hidden");
+  successBox.textContent = "";
+
+  if (!newPassword || !confirmPassword) {
+
+    errorBox.textContent =
+      "Preencha os dois campos.";
+
+    errorBox.classList.remove("hidden");
+
+    return;
+  }
+
+  if (newPassword.length < 6) {
+
+    errorBox.textContent =
+      "A senha deve ter pelo menos 6 caracteres.";
+
+    errorBox.classList.remove("hidden");
+
+    return;
+  }
+
+  if (newPassword !== confirmPassword) {
+
+    errorBox.textContent =
+      "As senhas não são iguais.";
+
+    errorBox.classList.remove("hidden");
+
+    return;
+  }
+
+  const result =
+    await client.auth.updateUser({
+      password: newPassword
+    });
+
+  if (result.error) {
+
+    errorBox.textContent =
+      "Erro ao alterar a senha: " +
+      result.error.message;
+
+    errorBox.classList.remove("hidden");
+
+    return;
+  }
+
+  successBox.textContent =
+    "Senha alterada com sucesso! Você já pode acessar a Balança.";
+
+}
 /* =========================
    TEMPO REAL
 ========================= */
@@ -722,7 +826,21 @@ function subscribe() {
 /* =========================
    RECUPERAR TICKET SALVO
 ========================= */
+/* =========================
+   DETECTAR RECUPERAÇÃO DE SENHA
+========================= */
 
+client.auth.onAuthStateChange(
+  async function(event) {
+
+    if (event === "PASSWORD_RECOVERY") {
+
+      show("recovery");
+
+    }
+
+  }
+);
 const saved =
   localStorage.getItem(
     "agrofila_ticket_id"
