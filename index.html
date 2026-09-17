@@ -282,7 +282,13 @@ const client = window.supabase.createClient(
   cfg.SUPABASE_URL,
   cfg.SUPABASE_KEY
 );
+client.auth.onAuthStateChange(function(event) {
 
+  if (event === "PASSWORD_RECOVERY") {
+    show("recovery");
+  }
+
+});
 
 const UNIT = "COPLACANA-UDG-QUIRINOPOLIS";
 
