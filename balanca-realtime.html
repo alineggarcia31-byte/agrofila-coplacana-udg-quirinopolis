@@ -21,9 +21,10 @@ input,select{padding:12px;border:1px solid #ccd8ce;border-radius:9px;font-size:1
 <main>
 <section id="login" class="login"><h2>Acesso da Balança</h2><p>Entre com o usuário da equipe da balança.</p><input id="email" type="email" placeholder="E-mail"><br><br><input id="password" type="password" placeholder="Senha"><button class="primary" style="width:100%;margin-top:12px" onclick="login()">ENTRAR</button><div id="loginErr" class="err hidden"></div></section>
 <section id="app" class="hidden">
-<div class="stats"><div class="stat"><small>AGUARDANDO</small><strong id="total">0</strong></div><div class="stat" style="border-top:5px solid #f28c28"><small style="color:#f28c28;font-weight:800">DESCARGA</small><strong id="descarga">0</strong></div><div class="stat" style="border-top:5px solid #176b3a"><small style="color:#176b3a;font-weight:800">CARGA</small><strong id="carga">0</strong></div>
+<div class="stats"><div class="stat"><small>AGUARDANDO</small><strong id="total">0</strong></div><div class="stat" style="border-top:5px solid #f28c28"><small style="color:#f28c28;font-weight:800">DESCARGA</small><strong id="descarga">0</strong></div><div class="stat" style="border-top:5px solid #176b3a"><small style="color:#176b3a;font-weight:800">CARGA</small><strong id="carga">0</strong></div><div class="stat"><small>EM ATENDIMENTO</small><strong id="atendimento">0</strong></div></div>
 <div class="toolbar"><div id="userProfile" style="font-weight:800;color:#176b3a;margin-right:8px"></div><div class="tabs"><button class="active" data-filter="TODOS">Todos</button><button data-filter="DESCARGA">Descarga</button><button data-filter="CARGA">Carga</button></div><input id="search" placeholder="🔎 Placa ou motorista"><select id="product"><option value="">Todos os produtos</option><option>Soja</option><option>Milho</option><option>Outro</option></select><button id="callNextBtn" class="lime" onclick="callNext()">CHAMAR PRÓXIMO</button>
   <button onclick="location.href='relatorio-pesagens.html'">RELATÓRIO DE PESAGENS</button><button onclick="logout()">SAIR</button></div>
+
 <div class="grid"><div class="panel"><h2 style="color:#f28c28">📦 FILA DE DESCARGA</h2><div id="descargaList" class="queue"></div></div><div class="panel"><h2 style="color:#176b3a">🚚 FILA DE CARGA</h2><div id="cargaList" class="queue"></div></div></div>
 </section></main>
 <script>
