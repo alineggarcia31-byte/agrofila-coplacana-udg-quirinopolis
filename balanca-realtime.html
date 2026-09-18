@@ -59,8 +59,130 @@ async function start(){
 async function load(){let r=await sb.from("queue_entries").select("*").eq("unit_code",UNIT).in("status",["AGUARDANDO","CHAMADO","EM_ATENDIMENTO"]).order("created_at",{ascending:true});if(r.error){alert(r.error.message);return}rows=r.data||[];render()}
 function subscribe(){sb.channel("agrofila-balanca").on("postgres_changes",{event:"*",schema:"public",table:"queue_entries",filter:"unit_code=eq."+UNIT},load).subscribe()}
 function render(){let q=(search.value||"").toLowerCase(),p=product.value;let r=rows.filter(x=>filter==="TODOS"||x.operation===filter).filter(x=>(x.plate+" "+x.name).toLowerCase().includes(q)).filter(x=>!p||x.product===p);cargaList.innerHTML=cards(r.filter(x=>x.operation==="CARGA"));descargaList.innerHTML=cards(r.filter(x=>x.operation==="DESCARGA"));total.textContent=rows.filter(x=>x.status==="AGUARDANDO").length;carga.textContent=rows.filter(x=>x.status==="AGUARDANDO"&&x.operation==="CARGA").length;descarga.textContent=rows.filter(x=>x.status==="AGUARDANDO"&&x.operation==="DESCARGA").length;atendimento.textContent=rows.filter(x=>["CHAMADO","EM_ATENDIMENTO"].includes(x.status)).length}
-function cards(a){if(!a.length)return '<div class="empty">Nenhum veículo na fila.</div>';return a.map((x,i)=>`<div class="card"><div class="pos">${i+1}</div><div><div class="plate">${x.plate}</div><div>${x.name}</div><div class="meta">${x.vehicle_type} • ${x.product} • ${new Date(x.created_at).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})}
-                                                                                                                                                                                                                                                                                </div><span class="badge">${x.status.replaceAll("_"," ")}</span></div><div class="actions">${x.status==="AGUARDANDO"?`<button class="call" onclick="act('${x.id}','CHAMADO')">CHAMAR</button>`:""}${x.status==="CHAMADO"?`<button class="arrive" onclick="act('${x.id}','EM_ATENDIMENTO')">VEÍCULO CHEGOU</button>`:""}${x.status==="EM_ATENDIMENTO"?`<button class="finish" onclick="act('${x.id}','FINALIZADO')">FINALIZAR</button>`:""}<button class="danger" onclick="act('${x.id}','CANCELADO')">NÃO COMPARECEU</button></div></div>`).join("")}
+function cards(a){
+  if(!a.length){
+    return '<div class="empty">Nenhum veículo na fila.</div>';
+  }
+
+  return a.map((x,i)=>{
+    const isBalanca=currentProfile?.perfil==="BALANCA";
+const isClassificacao=currentProfile?.perfil==="CLASSIFICACAO";
+
+    let operationalActions="";
+
+    if(isBalanca){
+      if(x.status==="AGUARDANDO"){
+        operationalActions+=`<button class="call" onclick="act('${x.id}','CHAMADO')">CHAMAR</button>`;
+      }
+
+      if(x.status==="CHAMADO"){
+        operationalActions+=`<button class="arrive" onclick="act('${x.id}','EM_ATENDIMENTO')">VEÍCULO CHEGOU</button>`;
+      }
+
+      if(x.status==="EM_ATENDIMENTO"){
+        operationalActions+=`<button class="finish" onclick="act('${x.id}','FINALIZADO')">FINALIZAR</button>`;
+      }
+
+      operationalActions+=`<button class="danger" onclick="act('${x.id}','CANCELADO')">NÃO COMPARECEU</button>`;
+    }
+
+    let releaseActions="";
+
+    if(x.operation==="DESCARGA"){
+      if(x.liberado_analise){
+        releaseActions+=`<span class="badge">LIBERADO PARA ANÁLISE</span>`;
+      }else if(isBalanca){
+        releaseActions+=`<button class="call" onclick="liberarAnalise('${x.id}')">LIBERADO PARA ANÁLISE</button>`;
+      }else{
+        releaseActions+=`<span class="badge">AGUARDANDO LIBERAÇÃO PARA ANÁLISE</span>`;
+      }
+
+      if(x.autorizado_descarga){
+        releaseActions+=`<span class="badge">AUTORIZADO DESCARGA</span>`;
+      }else if(isClassificacao){
+        releaseActions+=`<button class="finish" onclick="autorizarDescarga('${x.id}')">AUTORIZADO DESCARGA</button>`;
+      }else{
+        releaseActions+=`<span class="badge">AGUARDANDO AUTORIZAÇÃO DESCARGA</span>`;
+      }
+    }
+
+    if(x.operation==="CARGA"){
+      if(x.carga_liberada){
+        releaseActions+=`<span class="badge">CARGA LIBERADA</span>`;
+      }else if(isClassificacao){
+        releaseActions+=`<button class="finish" onclick="liberarCarga('${x.id}')">CARGA LIBERADA</button>`;
+      }else{
+        releaseActions+=`<span class="badge">AGUARDANDO LIBERAÇÃO DA CARGA</span>`;
+      }
+    }
+
+    return `<div class="card">
+      <div class="pos">${i+1}</div>
+      <div>
+        <div class="plate">${x.plate}</div>
+        <div>${x.name}</div>
+        <div class="meta">
+          ${x.vehicle_type} • ${x.product} •
+          ${new Date(x.created_at).toLocaleString("pt-BR",{
+            day:"2-digit",
+            month:"2-digit",
+            year:"numeric",
+            hour:"2-digit",
+            minute:"2-digit"
+          })}
+        </div>
+        <span class="badge">${x.status.replaceAll("_"," ")}</span>
+        <div class="actions">${releaseActions}</div>
+      </div>
+      <div class="actions">${operationalActions}</div>
+    </div>`;
+  }).join("");
+}
+async function liberarAnalise(id){
+  const r=await sb.rpc(
+    "agrofila_liberar_para_analise",
+    {p_queue_entry_id:id}
+  );
+
+  if(r.error){
+    alert(r.error.message);
+    return;
+  }
+
+  alert("Veículo liberado para análise.");
+  await load();
+}
+
+async function autorizarDescarga(id){
+  const r=await sb.rpc(
+    "agrofila_autorizar_descarga",
+    {p_queue_entry_id:id}
+  );
+
+  if(r.error){
+    alert(r.error.message);
+    return;
+  }
+
+  alert("Descarga autorizada.");
+  await load();
+}
+
+async function liberarCarga(id){
+  const r=await sb.rpc(
+    "agrofila_liberar_carga",
+    {p_queue_entry_id:id}
+  );
+
+  if(r.error){
+    alert(r.error.message);
+    return;
+  }
+
+  alert("Carga liberada.");
+  await load();
+}
+
 async function act(id,status){
   let patch={status};
 
