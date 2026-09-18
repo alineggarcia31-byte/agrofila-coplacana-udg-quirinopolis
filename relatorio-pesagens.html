@@ -152,7 +152,16 @@ td{
 .hidden{
   display:none
 }
+.period-open{
+  color:#176b3a;
+  font-weight:900
+}
 
+.period-closed{
+  color:#7a4b00;
+  font-weight:900
+}
+  
 @media(max-width:700px){
   .stats{
     grid-template-columns:1fr
@@ -250,7 +259,23 @@ td{
   </div>
 
 </div>
+<div class="box" id="periodBox">
+  <div style="font-weight:800;margin-bottom:10px">CONTROLE DE PERÍODO</div>
 
+  <div id="periodStatus">Carregando período...</div>
+
+  <div id="periodActions" class="toolbar hidden" style="margin-top:12px">
+    <button class="primary" id="closePeriodBtn" onclick="closeCurrentPeriod()">
+      ENCERRAR PERÍODO
+    </button>
+
+    <button class="lime" id="startPeriodBtn" onclick="startNewPeriod()">
+      INICIAR NOVO PERÍODO
+    </button>
+  </div>
+
+  <div id="periodMsg" style="margin-top:10px;font-size:13px"></div>
+</div>
 <div class="box tablewrap">
 
 <table>
@@ -289,6 +314,7 @@ const sb=window.supabase.createClient(
 
 let allRows=[];
 let filteredRows=[];
+let currentProfile=null;
 
 async function start(){
 
@@ -314,16 +340,134 @@ async function start(){
     document.getElementById("err")
       .classList.remove("hidden");
 
+   
+
+     
+  
+
+    
     return;
   }
+
+  currentProfile=p.data.perfil;
 
   document.getElementById("userProfile").textContent=
     p.data.nome+" — "+p.data.perfil;
 
+  await loadPeriod();
   await load();
 }
 
-async function load(){
+async function loadPeriod(){
+  const r=await sb
+    .from("agrofila_periodos")
+    .select("id,nome,status,iniciado_em,encerrado_em")
+    .order("iniciado_em",{ascending:false})
+    .limit(1)
+    .maybeSingle();
+
+  if(r.error){
+    document.getElementById("periodStatus").textContent=
+      "Erro ao consultar período: "+r.error.message;
+    return;
+  }
+
+  const status=document.getElementById("periodStatus");
+  const actions=document.getElementById("periodActions");
+
+  if(!r.data){
+    status.textContent="Nenhum período cadastrado.";
+
+    if(currentProfile==="COORDENADOR"){
+      actions.classList.remove("hidden");
+    }
+
+    return;
+  }
+
+  const p=r.data;
+
+  status.innerHTML=
+    "Período atual: <strong>"+esc(p.nome)+"</strong> — "+
+    (p.status==="ABERTO"
+      ? "<span class='period-open'>ABERTO</span>"
+      : "<span class='period-closed'>ENCERRADO</span>");
+
+  if(p.status==="ABERTO" && currentProfile==="COORDENADOR"){
+    actions.classList.remove("hidden");
+    document.getElementById("startPeriodBtn").disabled=true;
+    document.getElementById("startPeriodBtn").style.opacity=".5";
+  }else if(p.status==="ENCERRADO" && currentProfile==="COORDENADOR"){
+    actions.classList.remove("hidden");
+    document.getElementById("closePeriodBtn").disabled=true;
+    document.getElementById("closePeriodBtn").style.opacity=".5";
+  }
+}
+
+async function closeCurrentPeriod(){
+  const r=await sb
+    .from("agrofila_periodos")
+    .select("id,nome,status")
+    .eq("status","ABERTO")
+    .order("iniciado_em",{ascending:false})
+    .limit(1)
+    .maybeSingle();
+
+  if(r.error){
+    alert(r.error.message);
+    return;
+  }
+
+  if(!r.data){
+    alert("Não existe período aberto.");
+    return;
+  }
+
+  if(!confirm(
+    "Encerrar o período "+r.data.nome+
+    "? O histórico continuará preservado."
+  )) return;
+
+  const x=await sb.rpc(
+    "agrofila_encerrar_periodo",
+    {p_periodo_id:r.data.id}
+  );
+
+  if(x.error){
+    alert(x.error.message);
+    return;
+  }
+
+  alert("Período encerrado com sucesso.");
+  await loadPeriod();
+}
+
+async function startNewPeriod(){
+  const nome=prompt(
+    "Nome do novo período:",
+    "Período "+new Date().toLocaleDateString("pt-BR")
+  );
+
+  if(!nome||!nome.trim()) return;
+
+  const x=await sb.rpc(
+    "agrofila_iniciar_periodo",
+    {p_nome:nome.trim()}
+  );
+
+  if(x.error){
+    alert(x.error.message);
+    return;
+  }
+
+  alert("Novo período iniciado com sucesso.");
+  await loadPeriod();
+}
+
+
+  async function load(){
+
+
 
   const r=await sb
     .from("agrofila_pesagens")
