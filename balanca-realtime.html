@@ -114,11 +114,11 @@ const isClassificacao=currentProfile?.perfil==="CLASSIFICACAO";
 
     if(x.operation==="CARGA"){
       if(x.carga_liberada){
-        releaseActions+=`<span class="badge">CARGA LIBERADA</span>`;
+        releaseActions+=`<span class="badge">ANÁLISE LIBERADA</span>`;
       }else if(isClassificacao){
-        releaseActions+=`<button class="finish" onclick="liberarCarga('${x.id}')">CARGA LIBERADA</button>`;
+        releaseActions+=`<button class="finish" onclick="liberarCarga('${x.id}')">ANÁLISE LIBERADA</button>`;
       }else{
-        releaseActions+=`<span class="badge">AGUARDANDO LIBERAÇÃO DA CARGA</span>`;
+        releaseActions+=`<span class="badge">AGUARDANDO LIBERAÇÃO DA ANÁLISE</span>`;
       }
     }
 
