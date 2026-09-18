@@ -1,0 +1,499 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AgroFila — Relatório de Pesagens</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+
+<style>
+*{box-sizing:border-box}
+
+body{
+  margin:0;
+  font-family:Arial,sans-serif;
+  background:#f3f6f1;
+  color:#173b28
+}
+
+header{
+  background:#176b3a;
+  color:#fff;
+  padding:18px 28px
+}
+
+.brand{
+  font-size:24px;
+  font-weight:900
+}
+
+.unit{
+  font-size:13px;
+  margin-top:4px
+}
+
+main{
+  max-width:1500px;
+  margin:auto;
+  padding:22px
+}
+
+.box{
+  background:#fff;
+  border-radius:14px;
+  padding:18px;
+  box-shadow:0 3px 14px #0001;
+  margin-bottom:18px
+}
+
+.toolbar{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  align-items:end
+}
+
+.field{
+  display:flex;
+  flex-direction:column;
+  gap:5px
+}
+
+.field label{
+  font-size:12px;
+  font-weight:800
+}
+
+input,select{
+  padding:11px;
+  border:1px solid #ccd8ce;
+  border-radius:9px;
+  font-size:14px
+}
+
+button{
+  border:0;
+  border-radius:9px;
+  padding:11px 15px;
+  font-weight:800;
+  cursor:pointer
+}
+
+.primary{
+  background:#176b3a;
+  color:#fff
+}
+
+.lime{
+  background:#d8f22b;
+  color:#173b28
+}
+
+.stats{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:14px;
+  margin-bottom:18px
+}
+
+.stat{
+  background:#fff;
+  border-radius:14px;
+  padding:16px;
+  box-shadow:0 3px 14px #0001
+}
+
+.stat small{
+  color:#607067
+}
+
+.stat strong{
+  display:block;
+  font-size:28px;
+  margin-top:6px
+}
+
+.tablewrap{
+  overflow:auto
+}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+  min-width:800px
+}
+
+th,td{
+  padding:11px;
+  border-bottom:1px solid #e1e8e3;
+  text-align:left
+}
+
+th{
+  background:#eef4ef;
+  font-size:12px;
+  text-transform:uppercase
+}
+
+td{
+  font-size:14px
+}
+
+.err{
+  color:#922;
+  background:#fee;
+  padding:10px;
+  border-radius:8px;
+  margin-top:10px
+}
+
+.hidden{
+  display:none
+}
+
+@media(max-width:700px){
+  .stats{
+    grid-template-columns:1fr
+  }
+
+  .toolbar>*{
+    width:100%
+  }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <div class="brand">🌾 AGROFILA — RELATÓRIO DE PESAGENS</div>
+  <div class="unit">COPLACANA UDG QUIRINÓPOLIS</div>
+</header>
+
+<main>
+
+<div class="box">
+
+  <div
+    style="font-weight:800;margin-bottom:14px"
+    id="userProfile">
+    Carregando usuário...
+  </div>
+
+  <div class="toolbar">
+
+    <div class="field">
+      <label>DATA INICIAL</label>
+      <input id="dateFrom" type="date">
+    </div>
+
+    <div class="field">
+      <label>DATA FINAL</label>
+      <input id="dateTo" type="date">
+    </div>
+
+    <div class="field">
+      <label>MOTORISTA</label>
+      <input id="driver" placeholder="Nome do motorista">
+    </div>
+
+    <div class="field">
+      <label>PLACA</label>
+      <input id="plate" placeholder="Placa">
+    </div>
+
+    <div class="field">
+      <label>PRODUTO</label>
+      <select id="product">
+        <option value="">Todos</option>
+        <option>Soja</option>
+        <option>Milho</option>
+        <option>Outro</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>OPERADOR</label>
+      <input id="operator" placeholder="Operador">
+    </div>
+
+    <button class="primary" onclick="load()">
+      ATUALIZAR
+    </button>
+
+    <button class="lime" onclick="exportCSV()">
+      EXPORTAR EXCEL
+    </button>
+
+    <button onclick="logout()">
+      SAIR
+    </button>
+
+  </div>
+
+  <div id="err" class="err hidden"></div>
+
+</div>
+
+<div class="stats">
+
+  <div class="stat">
+    <small>TOTAL DE PESAGENS</small>
+    <strong id="total">0</strong>
+  </div>
+
+  <div class="stat">
+    <small>PERÍODO CONSULTADO</small>
+    <strong id="periodLabel">—</strong>
+  </div>
+
+</div>
+
+<div class="box tablewrap">
+
+<table>
+
+<thead>
+<tr>
+  <th>Nome do motorista</th>
+  <th>Placa</th>
+  <th>Data</th>
+  <th>Hora</th>
+  <th>Produto</th>
+  <th>Operador</th>
+</tr>
+</thead>
+
+<tbody id="tbody">
+<tr>
+  <td colspan="6">Carregando...</td>
+</tr>
+</tbody>
+
+</table>
+
+</div>
+
+</main>
+
+<script>
+
+const cfg=window.AGROFILA_CONFIG||{};
+
+const sb=window.supabase.createClient(
+  cfg.SUPABASE_URL,
+  cfg.SUPABASE_KEY
+);
+
+let allRows=[];
+let filteredRows=[];
+
+async function start(){
+
+  const {data:{user},error}=await sb.auth.getUser();
+
+  if(error||!user){
+    location.href="balanca-realtime.html";
+    return;
+  }
+
+  const p=await sb
+    .from("agrofila_profiles")
+    .select("nome,perfil")
+    .eq("user_id",user.id)
+    .eq("ativo",true)
+    .single();
+
+  if(p.error){
+
+    document.getElementById("err").textContent=
+      "Usuário sem perfil AgroFila ativo.";
+
+    document.getElementById("err")
+      .classList.remove("hidden");
+
+    return;
+  }
+
+  document.getElementById("userProfile").textContent=
+    p.data.nome+" — "+p.data.perfil;
+
+  await load();
+}
+
+async function load(){
+
+  const r=await sb
+    .from("agrofila_pesagens")
+    .select(
+      "motorista,placa,data_pesagem,hora_pesagem,produto,operador_nome,created_at"
+    )
+    .order("data_pesagem",{ascending:false})
+    .order("hora_pesagem",{ascending:false});
+
+  if(r.error){
+
+    showErr(r.error.message);
+    return;
+  }
+
+  allRows=r.data||[];
+
+  render();
+}
+
+function render(){
+
+  const df=dateFrom.value;
+  const dt=dateTo.value;
+
+  const d=driver.value
+    .toLowerCase()
+    .trim();
+
+  const pl=plate.value
+    .toLowerCase()
+    .trim();
+
+  const op=operator.value
+    .toLowerCase()
+    .trim();
+
+  const pr=product.value;
+
+  filteredRows=allRows.filter(x=>
+    (!df||x.data_pesagem>=df)&&
+    (!dt||x.data_pesagem<=dt)&&
+    (!d||x.motorista.toLowerCase().includes(d))&&
+    (!pl||x.placa.toLowerCase().includes(pl))&&
+    (!pr||x.produto===pr)&&
+    (!op||((x.operador_nome||"")
+      .toLowerCase()
+      .includes(op)))
+  );
+
+  total.textContent=filteredRows.length;
+
+  periodLabel.textContent=
+    (df||"início")+" → "+(dt||"hoje");
+
+  tbody.innerHTML=
+
+    filteredRows.length
+
+    ?
+
+    filteredRows.map(x=>
+      "<tr>"+
+      "<td>"+esc(x.motorista)+"</td>"+
+      "<td>"+esc(x.placa)+"</td>"+
+      "<td>"+fmtDate(x.data_pesagem)+"</td>"+
+      "<td>"+esc(x.hora_pesagem).slice(0,8)+"</td>"+
+      "<td>"+esc(x.produto)+"</td>"+
+      "<td>"+esc(x.operador_nome||"")+"</td>"+
+      "</tr>"
+    ).join("")
+
+    :
+
+    "<tr><td colspan='6'>Nenhuma pesagem encontrada.</td></tr>";
+}
+
+function fmtDate(v){
+
+  if(!v)return "";
+
+  const a=v.split("-");
+
+  return a.length===3
+    ? a[2]+"/"+a[1]+"/"+a[0]
+    : v;
+}
+
+function esc(v){
+
+  return String(v??"")
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;");
+}
+
+function exportCSV(){
+
+  if(!filteredRows.length){
+
+    alert("Não há pesagens para exportar.");
+    return;
+  }
+
+  const header=[
+    "Nome do motorista",
+    "Placa",
+    "Data",
+    "Hora",
+    "Produto",
+    "Operador"
+  ];
+
+  const lines=[
+    header,
+    ...filteredRows.map(x=>[
+      x.motorista,
+      x.placa,
+      fmtDate(x.data_pesagem),
+      String(x.hora_pesagem).slice(0,8),
+      x.produto,
+      x.operador_nome||""
+    ])
+  ]
+  .map(row=>
+    row.map(v=>
+      '"'+String(v??"").replaceAll('"','""')+'"'
+    ).join(";")
+  );
+
+  const blob=new Blob(
+    ["\ufeff"+lines.join("\r\n")],
+    {type:"text/csv;charset=utf-8;"}
+  );
+
+  const a=document.createElement("a");
+
+  a.href=URL.createObjectURL(blob);
+
+  a.download="agrofila-pesagens.csv";
+
+  a.click();
+
+  URL.revokeObjectURL(a.href);
+}
+
+function showErr(m){
+
+  err.textContent=m;
+
+  err.classList.remove("hidden");
+}
+
+function logout(){
+
+  sb.auth.signOut()
+    .then(()=>
+      location.href="balanca-realtime.html"
+    );
+}
+
+[dateFrom,dateTo,driver,plate,product,operator]
+.forEach(x=>
+  x.addEventListener("input",render)
+);
+
+start();
+
+</script>
+
+</body>
+</html>
