@@ -290,13 +290,14 @@ td{
   <th>Data</th>
   <th>Hora</th>
   <th>Produto</th>
+  <th>Operação</th>
   <th>Operador</th>
 </tr>
 </thead>
 
 <tbody id="tbody">
 <tr>
-  <td colspan="6">Carregando...</td>
+  <td colspan="7">Carregando...</td>
 </tr>
 </tbody>
 
@@ -475,7 +476,7 @@ async function startNewPeriod(){
   const r=await sb
     .from("agrofila_pesagens")
     .select(
-      "motorista,placa,data_pesagem,hora_pesagem,produto,operador_nome,created_at"
+      
     )
     .order("data_pesagem",{ascending:false})
     .order("hora_pesagem",{ascending:false});
@@ -539,13 +540,14 @@ function render(){
       "<td>"+fmtDate(x.data_pesagem)+"</td>"+
       "<td>"+esc(x.hora_pesagem).slice(0,8)+"</td>"+
       "<td>"+esc(x.produto)+"</td>"+
+      "<td>"+esc(x.operacao||"")+"</td>"+
       "<td>"+esc(x.operador_nome||"")+"</td>"+
       "</tr>"
     ).join("")
 
     :
 
-    "<tr><td colspan='6'>Nenhuma pesagem encontrada.</td></tr>";
+   "<tr><td colspan='7'>Nenhuma pesagem encontrada.</td></tr>";
 }
 
 function fmtDate(v){
@@ -582,6 +584,7 @@ function exportCSV(){
     "Data",
     "Hora",
     "Produto",
+   "Operação",
     "Operador"
   ];
 
@@ -593,6 +596,7 @@ function exportCSV(){
       fmtDate(x.data_pesagem),
       String(x.hora_pesagem).slice(0,8),
       x.produto,
+      x.operacao||"",
       x.operador_nome||""
     ])
   ]
