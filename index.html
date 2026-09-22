@@ -445,6 +445,8 @@ async function joinQueue() {
       "Preencha nome, celular e placa."
     );
 
+    
+
     return;
 
   }
@@ -466,6 +468,56 @@ if (!deviceId) {
 }
 
   try {
+
+    const localizacao = await new Promise((resolve, reject) => {
+  if (!navigator.geolocation) {
+    reject(new Error("Este aparelho não oferece suporte à localização."));
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    (position) => resolve(position.coords),
+    () => reject(
+      new Error(
+        "Não foi possível obter sua localização. Ative a localização do celular e permita o acesso ao AgroFila."
+      )
+    ),
+    {
+      enableHighAccuracy: true,
+      timeout: 15000,
+      maximumAge: 0
+    }
+  );
+});
+
+    const verificacaoLocalizacao =
+  await client.rpc(
+    "agrofila_verificar_localizacao",
+    {
+      p_latitude: localizacao.latitude,
+      p_longitude: localizacao.longitude
+    }
+  );
+
+if (verificacaoLocalizacao.error) {
+  throw new Error(
+    "Não foi possível validar sua localização: " +
+    verificacaoLocalizacao.error.message
+  );
+}
+
+const dadosLocalizacao = verificacaoLocalizacao.data?.[0];
+
+if (!dadosLocalizacao?.permitido) {
+  throw new Error(
+    "Você está fora da área permitida para entrar na fila. " +
+    "Distância da unidade: " +
+    (dadosLocalizacao?.distancia_metros ?? "?") +
+    " metros. É necessário estar a até " +
+    (dadosLocalizacao?.raio_permitido_metros ?? 500) +
+    " metros do armazém."
+  );
+}
 
     const result =
       await client.rpc(
