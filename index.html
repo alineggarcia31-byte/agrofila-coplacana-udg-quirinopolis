@@ -458,7 +458,12 @@ async function joinQueue() {
 
   button.textContent =
     "ENTRANDO...";
+let deviceId = localStorage.getItem("agrofila_device_id");
 
+if (!deviceId) {
+  deviceId = crypto.randomUUID();
+  localStorage.setItem("agrofila_device_id", deviceId);
+}
 
   try {
 
@@ -471,7 +476,8 @@ async function joinQueue() {
           p_plate: plateValue,
           p_vehicle_type: vehicleValue,
           p_operation: operationValue,
-          p_product: productValue
+         p_product: productValue,
+p_device_id: deviceId
         }
       );
 
